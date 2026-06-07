@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  aura-todo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aura_task_orchestrator
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persistent volume mount for local storage
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+    # Security/limit resource profiles (standard Docker guidelines)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          memory: 128M

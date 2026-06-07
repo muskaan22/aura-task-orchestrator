@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA | First-Principles Task Orchestrator</title>
+  <meta name="description" content="An aesthetic, distraction-free task planner designed from first principles. Features keyboard shortcuts, natural language parsing, and focus mode.">
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Style Sheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Sidebar / Navigation Panel -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <div class="logo-inner"></div>
+        </div>
+        <h1 class="brand-name">AURA</h1>
+      </div>
+      
+      <!-- Progress Analytics Ring -->
+      <section class="analytics-card" aria-label="Progress statistics">
+        <div class="progress-ring-container">
+          <svg class="progress-ring" width="120" height="120">
+            <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.06)" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+            <circle id="progress-circle" class="progress-ring__circle" stroke="url(#gradient)" stroke-width="8" stroke-dasharray="314.16 314.16" stroke-dashoffset="314.16" stroke-linecap="round" fill="transparent" r="50" cx="60" cy="60"/>
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#06b6d4" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="progress-text-container">
+            <span id="progress-percent" class="progress-percent">0%</span>
+            <span class="progress-label">done</span>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <span id="completed-count" class="stat-val">0</span>
+            <span class="stat-lbl">Completed</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span id="streak-count" class="stat-val">0</span>
+            <span class="stat-lbl">Day Streak</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- View Filters Navigation -->
+      <nav class="nav-filters" aria-label="Task lists navigation">
+        <button id="filter-all" class="nav-btn active" aria-pressed="true">
+          <i data-lucide="layers" class="icon-sm"></i>
+          <span>All Tasks</span>
+          <span id="count-all" class="filter-count">0</span>
+        </button>
+        <button id="filter-active" class="nav-btn" aria-pressed="false">
+          <i data-lucide="circle" class="icon-sm"></i>
+          <span>Active</span>
+          <span id="count-active" class="filter-count">0</span>
+        </button>
+        <button id="filter-completed" class="nav-btn" aria-pressed="false">
+          <i data-lucide="check-circle" class="icon-sm"></i>
+          <span>Completed</span>
+          <span id="count-completed" class="filter-count">0</span>
+        </button>
+        <button id="filter-focus" class="nav-btn" aria-pressed="false">
+          <i data-lucide="target" class="icon-sm"></i>
+          <span>Today's Focus</span>
+          <span id="count-focus" class="filter-count">0</span>
+        </button>
+      </nav>
+
+      <!-- Dynamic Tags Filter Panel -->
+      <div class="tags-section">
+        <h3 class="section-title">TAGS</h3>
+        <div id="tags-container" class="tags-list">
+          <!-- Dynamically populated tags -->
+        </div>
+      </div>
+      
+      <!-- User Info / Keyboard tips -->
+      <div class="sidebar-tip">
+        <div class="tip-icon"><i data-lucide="keyboard" class="icon-xs"></i></div>
+        <p>Press <kbd>/</kbd> to quickly add a task. Press <kbd>Esc</kbd> to exit Focus Mode.</p>
+      </div>
+    </aside>
+
+    <!-- Main Dashboard Area -->
+    <main class="main-content">
+      
+      <!-- Greeting and Date Header -->
+      <header class="main-header">
+        <div class="header-text">
+          <h2 id="greeting-title">Focus & Align</h2>
+          <p id="current-date-str">Loading date...</p>
+        </div>
+        <div class="header-actions">
+          <button id="toggle-focus-mode-btn" class="focus-btn-lg" title="Toggle anti-anxiety focus layout">
+            <i data-lucide="eye-off" class="icon-sm"></i>
+            <span>Focus Mode</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Focus Zone (The Core First-Principles MIT View) -->
+      <section id="focus-zone" class="focus-zone" aria-labelledby="focus-title">
+        <div class="focus-zone-header">
+          <h3 id="focus-title" class="focus-zone-title">
+            <i data-lucide="target" class="icon-md text-cyan"></i>
+            Today's Commitments
+          </h3>
+          <span class="focus-slots-counter"><span id="focus-active-count">0</span> of 3 filled</span>
+        </div>
+        
+        <div id="focus-slots-wrapper" class="focus-slots-grid">
+          <!-- Focus cards populate here -->
+          <div class="focus-slot-placeholder" id="focus-empty-placeholder">
+            <i data-lucide="target" class="placeholder-icon"></i>
+            <p>Commit to 1-3 high-impact tasks today.</p>
+            <span>Activate the bullseye icon <i data-lucide="target" class="icon-inline"></i> on any task below to pull it here.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Add Task Section -->
+      <section class="task-input-section" aria-label="Add new task">
+        <form id="add-task-form" class="task-form">
+          <div class="input-wrapper">
+            <i data-lucide="plus" class="input-icon"></i>
+            <input 
+              type="text" 
+              id="new-task-input" 
+              placeholder="Add a high impact task... Press '/' to focus" 
+              autocomplete="off" 
+              required
+            >
+            <button type="submit" id="submit-task-btn" class="input-submit-btn" aria-label="Add task">
+              <span>Add</span>
+              <i data-lucide="arrow-right" class="icon-sm"></i>
+            </button>
+          </div>
+          <div class="parser-helper">
+            <span>Parser Hints:</span>
+            <span class="pill-hint">#work</span>
+            <span class="pill-hint">#personal</span>
+            <span class="pill-hint">!high</span>
+            <span class="pill-hint">!med</span>
+            <span class="pill-hint">!low</span>
+            <span class="example-text">e.g., "#work !high Complete final presentation slides"</span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Task Lists & Filter Header -->
+      <section class="task-list-section">
+        <div class="list-header">
+          <h3 id="list-title" class="list-title">All Tasks</h3>
+          <div class="list-actions">
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="search-tasks-input" placeholder="Search tasks...">
+            </div>
+            <select id="sort-tasks-select" class="sort-select" aria-label="Sort tasks">
+              <option value="created-desc">Newest First</option>
+              <option value="created-asc">Oldest First</option>
+              <option value="priority-desc">Priority: High to Low</option>
+              <option value="priority-asc">Priority: Low to High</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- The List of Todos -->
+        <div id="todo-list-container" class="todo-list">
+          <!-- Dynamic Todo Cards -->
+        </div>
+      </section>
+      
+    </main>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden" role="alert" aria-live="polite">
+    <i data-lucide="info" class="toast-icon"></i>
+    <span id="toast-message">Task updated</span>
+  </div>
+
+  <!-- Lucide Script init -->
+  <script>
+    // Initialize icons immediately if script loads
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+    });
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
