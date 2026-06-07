@@ -1,25 +1,14 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Data file path
-const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILE = path.join(DATA_DIR, 'todos.json');
 
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initial default tasks representing first-principles features
-const defaultTodos = [
+// In-memory store (Vercel serverless = stateless; persistence handled by client localStorage)
+let todos = [
   {
     id: "1",
     title: "Drag or click 'Focus' to add this to 'Today's Focus'",
@@ -69,40 +58,13 @@ const defaultTodos = [
   }
 ];
 
-// Helper to read todos
-function readTodos() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(defaultTodos, null, 2));
-      return defaultTodos;
-    }
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error('Error reading todos file, resetting to defaults:', err);
-    return defaultTodos;
-  }
-}
-
-// Helper to write todos
-function writeTodos(todos) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(todos, null, 2));
-  } catch (err) {
-    console.error('Error writing todos file:', err);
-  }
-}
-
-// REST API routes
-
 // GET: Fetch all todos
 app.get('/api/todos', (req, res) => {
-  res.json(readTodos());
+  res.json(todos);
 });
 
 // POST: Add a new todo
 app.post('/api/todos', (req, res) => {
-  const todos = readTodos();
   const newTodo = {
     id: Date.now().toString(),
     title: req.body.title || 'Untitled Task',
@@ -115,36 +77,30 @@ app.post('/api/todos', (req, res) => {
     createdAt: new Date().toISOString()
   };
   todos.push(newTodo);
-  writeTodos(todos);
   res.status(201).json(newTodo);
 });
 
 // PUT: Update an existing todo
 app.put('/api/todos/:id', (req, res) => {
   const { id } = req.params;
-  const todos = readTodos();
   const todoIndex = todos.findIndex(t => t.id === id);
 
   if (todoIndex === -1) {
     return res.status(404).json({ error: 'Todo not found' });
   }
 
-  // Update fields
-  const updatedTodo = {
+  todos[todoIndex] = {
     ...todos[todoIndex],
     ...req.body,
-    id: todos[todoIndex].id // Protect ID
+    id: todos[todoIndex].id // protect ID
   };
 
-  todos[todoIndex] = updatedTodo;
-  writeTodos(todos);
-  res.json(updatedTodo);
+  res.json(todos[todoIndex]);
 });
 
 // DELETE: Remove a todo
 app.delete('/api/todos/:id', (req, res) => {
   const { id } = req.params;
-  let todos = readTodos();
   const todoIndex = todos.findIndex(t => t.id === id);
 
   if (todoIndex === -1) {
@@ -152,20 +108,21 @@ app.delete('/api/todos/:id', (req, res) => {
   }
 
   todos = todos.filter(t => t.id !== id);
-  writeTodos(todos);
   res.json({ success: true, message: `Task ${id} deleted successfully.` });
 });
 
-// Serve frontend SPA index for any unrecognized routes (client-side routing fallback)
+// Serve SPA index fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start listening
-app.listen(PORT, () => {
-  console.log(`===================================================`);
-  console.log(`First-Principles Todo Server running on port ${PORT}`);
-  console.log(`Serving static files from /public`);
-  console.log(`Database persisting to /data/todos.json`);
-  console.log(`===================================================`);
-});
+// Export for Vercel (do NOT call app.listen here)
+module.exports = app;
+
+// Run locally if executed directly
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`AURA server running on http://localhost:${PORT}`);
+  });
+}

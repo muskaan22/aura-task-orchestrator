@@ -44,6 +44,60 @@ const tagsContainer = document.getElementById('tags-container');
 const CIRCLE_RADIUS = 50;
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS; // ~314.16
 
+// Storage keys
+const STORAGE_KEY = 'aura-todos';
+
+// Default tasks shown on first load
+const DEFAULT_TODOS = [
+  {
+    id: "1",
+    title: "Drag or click 'Focus' to add this to 'Today\\'s Focus'",
+    priority: "high",
+    tags: ["feature"],
+    completed: false,
+    focus: true,
+    notes: "Focus Mode lets you isolate 1-3 Most Important Tasks (MITs) to eliminate distraction and lower anxiety.",
+    subtasks: [
+      { id: "sub1-1", title: "Click the target icon on a task", completed: false },
+      { id: "sub1-2", title: "Complete this task in Focus Mode", completed: false }
+    ],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "2",
+    title: "Press '/' on keyboard to instantly focus the input box",
+    priority: "medium",
+    tags: ["shortcut"],
+    completed: false,
+    focus: false,
+    notes: "Pressing 'Esc' will unfocus the input. Keyboard efficiency reduces friction.",
+    subtasks: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "3",
+    title: "Try typing '#work !high Prepare project slides'",
+    priority: "high",
+    tags: ["tip"],
+    completed: false,
+    focus: false,
+    notes: "Our smart parser detects '#' for tags and '!' for priorities on the fly.",
+    subtasks: [],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "4",
+    title: "Check off this tutorial task to see your progress update",
+    priority: "low",
+    tags: ["tutorial"],
+    completed: true,
+    focus: false,
+    notes: "Completing tasks updates the visual progress gauge and strengthens your streak.",
+    subtasks: [],
+    createdAt: new Date().toISOString()
+  }
+];
+
 // ----------------------------------------------------
 // INITIALIZATION
 // ----------------------------------------------------
@@ -109,96 +163,77 @@ function setupEventListeners() {
 }
 
 // ----------------------------------------------------
-// API REQUESTS & SYNCING
+// LOCAL STORAGE PERSISTENCE
 // ----------------------------------------------------
 
-async function fetchTodos() {
-  try {
-    const response = await fetch('/api/todos');
-    if (!response.ok) throw new Error('Failed to fetch tasks.');
-    todos = await response.json();
-    updateAnalytics();
-    render();
-  } catch (error) {
-    showToast(`Error: ${error.message}`, true);
-  }
+function saveTodos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
-async function handleAddTask() {
+function fetchTodos() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    try {
+      todos = JSON.parse(stored);
+    } catch {
+      todos = [...DEFAULT_TODOS];
+      saveTodos();
+    }
+  } else {
+    todos = [...DEFAULT_TODOS];
+    saveTodos();
+  }
+  updateAnalytics();
+  render();
+}
+
+function handleAddTask() {
   const rawText = newTaskInput.value.trim();
   if (!rawText) return;
 
-  // First Principle NLP Parser
   const { title, tags, priority } = parseTaskNLP(rawText);
 
-  try {
-    const response = await fetch('/api/todos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, tags, priority })
-    });
-    
-    if (!response.ok) throw new Error('Failed to add task.');
-    const newTodo = await response.json();
-    todos.push(newTodo);
-    
-    // Clear Input
-    newTaskInput.value = '';
-    
-    showToast(`Task added: "${newTodo.title}"`);
-    updateAnalytics();
-    render();
-  } catch (error) {
-    showToast(`Error: ${error.message}`, true);
-  }
+  const newTodo = {
+    id: Date.now().toString(),
+    title,
+    priority,
+    tags,
+    completed: false,
+    focus: false,
+    notes: '',
+    subtasks: [],
+    createdAt: new Date().toISOString()
+  };
+
+  todos.push(newTodo);
+  saveTodos();
+  newTaskInput.value = '';
+  showToast(`Task added: "${newTodo.title}"`);
+  updateAnalytics();
+  render();
 }
 
-async function toggleTodoCompleted(id) {
+function toggleTodoCompleted(id) {
   const todoIndex = todos.findIndex(t => t.id === id);
   if (todoIndex === -1) return;
 
-  const currentStatus = todos[todoIndex].completed;
-  const newStatus = !currentStatus;
-  
-  // Update UI optimistically
-  todos[todoIndex].completed = newStatus;
-  
-  // Play satisfaction metrics
-  if (newStatus) {
+  todos[todoIndex].completed = !todos[todoIndex].completed;
+
+  if (todos[todoIndex].completed) {
     showToast('Task completed! Focus maintained.');
     incrementStreakIfNeeded();
   }
-  
+
+  saveTodos();
   updateAnalytics();
   render();
-
-  try {
-    const response = await fetch(`/api/todos/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed: newStatus })
-    });
-    
-    if (!response.ok) throw new Error('Sync failed.');
-    // Keep backend result in state
-    todos[todoIndex] = await response.json();
-  } catch (error) {
-    // Revert on failure
-    todos[todoIndex].completed = currentStatus;
-    updateAnalytics();
-    render();
-    showToast(`Sync failed: ${error.message}`, true);
-  }
 }
 
-async function toggleTodoFocus(id) {
+function toggleTodoFocus(id) {
   const todoIndex = todos.findIndex(t => t.id === id);
   if (todoIndex === -1) return;
 
-  const currentFocus = todos[todoIndex].focus;
-  
-  // First principles rule: Max 3 commitments in focus to lower anxiety!
-  if (!currentFocus) {
+  if (!todos[todoIndex].focus) {
     const activeFocusCount = todos.filter(t => t.focus && !t.completed).length;
     if (activeFocusCount >= 3) {
       showToast('To prevent anxiety, limit active focus commitments to 3 tasks!', true);
@@ -206,141 +241,61 @@ async function toggleTodoFocus(id) {
     }
   }
 
-  const newFocus = !currentFocus;
-  todos[todoIndex].focus = newFocus;
+  todos[todoIndex].focus = !todos[todoIndex].focus;
+  saveTodos();
   render();
-
-  try {
-    const response = await fetch(`/api/todos/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ focus: newFocus })
-    });
-    
-    if (!response.ok) throw new Error('Sync failed.');
-    todos[todoIndex] = await response.json();
-    render();
-  } catch (error) {
-    todos[todoIndex].focus = currentFocus;
-    render();
-    showToast(`Sync failed: ${error.message}`, true);
-  }
 }
 
-async function updateTodoNotes(id, notes) {
+function updateTodoNotes(id, notes) {
   const todoIndex = todos.findIndex(t => t.id === id);
   if (todoIndex === -1) return;
 
   todos[todoIndex].notes = notes;
-
-  try {
-    const response = await fetch(`/api/todos/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes })
-    });
-    
-    if (!response.ok) throw new Error('Sync notes failed.');
-    showToast('Notes auto-saved');
-  } catch (error) {
-    showToast('Notes sync failed', true);
-  }
+  saveTodos();
+  showToast('Notes auto-saved');
 }
 
-async function addSubtask(todoId, title) {
+function addSubtask(todoId, title) {
   const todoIndex = todos.findIndex(t => t.id === todoId);
   if (todoIndex === -1) return;
 
-  const subtask = {
+  todos[todoIndex].subtasks.push({
     id: 'sub-' + Date.now(),
-    title: title,
+    title,
     completed: false
-  };
-
-  todos[todoIndex].subtasks.push(subtask);
-  render();
-
-  try {
-    const response = await fetch(`/api/todos/${todoId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subtasks: todos[todoIndex].subtasks })
-    });
-    
-    if (!response.ok) throw new Error('Sync failed.');
-    todos[todoIndex] = await response.json();
-  } catch (error) {
-    showToast(`Failed to add subtask: ${error.message}`, true);
-  }
-}
-
-async function toggleSubtaskCompleted(todoId, subtaskId) {
-  const todoIndex = todos.findIndex(t => t.id === todoId);
-  if (todoIndex === -1) return;
-
-  const subtasks = todos[todoIndex].subtasks.map(sub => {
-    if (sub.id === subtaskId) {
-      return { ...sub, completed: !sub.completed };
-    }
-    return sub;
   });
 
-  todos[todoIndex].subtasks = subtasks;
+  saveTodos();
   render();
-
-  try {
-    const response = await fetch(`/api/todos/${todoId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subtasks })
-    });
-    
-    if (!response.ok) throw new Error('Sync failed.');
-    todos[todoIndex] = await response.json();
-  } catch (error) {
-    showToast(`Subtask state sync failed: ${error.message}`, true);
-  }
 }
 
-async function deleteSubtask(todoId, subtaskId) {
+function toggleSubtaskCompleted(todoId, subtaskId) {
   const todoIndex = todos.findIndex(t => t.id === todoId);
   if (todoIndex === -1) return;
 
-  const subtasks = todos[todoIndex].subtasks.filter(sub => sub.id !== subtaskId);
-  todos[todoIndex].subtasks = subtasks;
-  render();
+  todos[todoIndex].subtasks = todos[todoIndex].subtasks.map(sub =>
+    sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
+  );
 
-  try {
-    const response = await fetch(`/api/todos/${todoId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subtasks })
-    });
-    
-    if (!response.ok) throw new Error('Sync failed.');
-    todos[todoIndex] = await response.json();
-  } catch (error) {
-    showToast(`Failed to delete subtask: ${error.message}`, true);
-  }
+  saveTodos();
+  render();
 }
 
-async function handleDeleteTodo(id) {
-  try {
-    const response = await fetch(`/api/todos/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) throw new Error('Failed to delete task.');
-    
-    // Remove from state
-    todos = todos.filter(t => t.id !== id);
-    
-    showToast('Task removed from orchestration');
-    updateAnalytics();
-    render();
-  } catch (error) {
-    showToast(`Error: ${error.message}`, true);
-  }
+function deleteSubtask(todoId, subtaskId) {
+  const todoIndex = todos.findIndex(t => t.id === todoId);
+  if (todoIndex === -1) return;
+
+  todos[todoIndex].subtasks = todos[todoIndex].subtasks.filter(sub => sub.id !== subtaskId);
+  saveTodos();
+  render();
+}
+
+function handleDeleteTodo(id) {
+  todos = todos.filter(t => t.id !== id);
+  saveTodos();
+  showToast('Task removed from orchestration');
+  updateAnalytics();
+  render();
 }
 
 // ----------------------------------------------------
