@@ -18,7 +18,163 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
+
+  <!-- ═══════════════════════════════════════════════════════
+       LOGIN OVERLAY — shown when not authenticated
+  ════════════════════════════════════════════════════════ -->
+  <div id="login-overlay" class="login-overlay" style="display:none;">
+
+    <!-- Animated background orbs -->
+    <div class="login-orb login-orb--purple"></div>
+    <div class="login-orb login-orb--cyan"></div>
+    <div class="login-orb login-orb--violet"></div>
+
+    <!-- Login Card -->
+    <div id="login-card" class="login-card">
+      
+      <!-- Brand -->
+      <div class="login-brand">
+        <div class="login-logo">
+          <div class="logo-inner"></div>
+        </div>
+        <div>
+          <h1 class="login-brand-name">AURA</h1>
+          <p class="login-brand-sub">Task Orchestrator</p>
+        </div>
+      </div>
+
+      <div class="login-divider"></div>
+
+      <p class="login-heading">Welcome back</p>
+      <p class="login-subheading">Sign in to access your workspace</p>
+
+      <!-- Form -->
+      <form id="login-form" class="login-form" novalidate autocomplete="off">
+
+        <!-- Username -->
+        <div class="login-field-group">
+          <label class="login-label" for="login-username">Username</label>
+          <div class="login-input-wrapper">
+            <i data-lucide="user" class="login-input-icon"></i>
+            <input
+              id="login-username"
+              class="login-input"
+              type="text"
+              placeholder="Enter username"
+              autocomplete="username"
+              required
+            >
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="login-field-group">
+          <label class="login-label" for="login-password">Password</label>
+          <div class="login-input-wrapper">
+            <i data-lucide="lock" class="login-input-icon"></i>
+            <input
+              id="login-password"
+              class="login-input"
+              type="password"
+              placeholder="Enter password"
+              autocomplete="current-password"
+              required
+            >
+            <button
+              type="button"
+              id="toggle-password-visibility"
+              class="login-toggle-pw"
+              aria-label="Toggle password visibility"
+            >
+              <i data-lucide="eye-off" class="icon-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div id="login-error-msg" class="login-error" style="display:none;">
+          <i data-lucide="alert-circle" class="icon-sm"></i>
+          <span></span>
+        </div>
+
+        <!-- Submit -->
+        <button id="login-submit-btn" type="submit" class="login-submit-btn">
+          <span>Sign In</span>
+          <i data-lucide="arrow-right" class="icon-sm"></i>
+        </button>
+
+      </form>
+
+      <!-- Default credentials hint -->
+      <p class="login-hint">
+        <i data-lucide="info" class="icon-xxs"></i>
+        Default: <code>admin</code> / <code>aura@2024</code>
+      </p>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       CHANGE PASSWORD MODAL
+  ════════════════════════════════════════════════════════ -->
+  <div id="change-pwd-modal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i data-lucide="key-round" class="icon-sm"></i>
+          Change Password
+        </h3>
+        <button id="close-change-pwd-btn" class="modal-close-btn" aria-label="Close">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+
+      <form id="change-pwd-form" class="modal-form" novalidate>
+        <div class="login-field-group">
+          <label class="login-label" for="current-password">Current Password</label>
+          <div class="login-input-wrapper">
+            <i data-lucide="lock" class="login-input-icon"></i>
+            <input id="current-password" class="login-input" type="password" placeholder="Current password" required>
+          </div>
+        </div>
+        <div class="login-field-group">
+          <label class="login-label" for="new-password">New Password</label>
+          <div class="login-input-wrapper">
+            <i data-lucide="lock-keyhole" class="login-input-icon"></i>
+            <input id="new-password" class="login-input" type="password" placeholder="Min. 6 characters" required minlength="6">
+          </div>
+        </div>
+        <div class="login-field-group">
+          <label class="login-label" for="confirm-password">Confirm New Password</label>
+          <div class="login-input-wrapper">
+            <i data-lucide="shield-check" class="login-input-icon"></i>
+            <input id="confirm-password" class="login-input" type="password" placeholder="Repeat new password" required>
+          </div>
+        </div>
+
+        <div id="change-pwd-error" class="login-error" style="display:none;">
+          <i data-lucide="alert-circle" class="icon-sm"></i>
+          <span></span>
+        </div>
+        <div id="change-pwd-success" class="login-success" style="display:none;">
+          <i data-lucide="check-circle" class="icon-sm"></i>
+          <span>Password updated successfully!</span>
+        </div>
+
+        <button type="submit" class="login-submit-btn" style="margin-top:0.5rem;">
+          <span>Update Password</span>
+          <i data-lucide="check" class="icon-sm"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN APP (hidden until authenticated)
+  ════════════════════════════════════════════════════════ -->
+  <div id="app-container-wrapper" class="app-container" style="display:none;">
     
     <!-- Sidebar / Navigation Panel -->
     <aside class="sidebar">
@@ -92,10 +248,24 @@
         </div>
       </div>
       
-      <!-- User Info / Keyboard tips -->
-      <div class="sidebar-tip">
-        <div class="tip-icon"><i data-lucide="keyboard" class="icon-xs"></i></div>
-        <p>Press <kbd>/</kbd> to quickly add a task. Press <kbd>Esc</kbd> to exit Focus Mode.</p>
+      <!-- Sidebar footer: keyboard tips + account actions -->
+      <div class="sidebar-footer">
+        <div class="sidebar-tip">
+          <div class="tip-icon"><i data-lucide="keyboard" class="icon-xs"></i></div>
+          <p>Press <kbd>/</kbd> to quickly add a task. Press <kbd>Esc</kbd> to exit Focus Mode.</p>
+        </div>
+
+        <!-- Account actions -->
+        <div class="sidebar-account-actions">
+          <button id="open-change-pwd-btn" class="account-action-btn" title="Change password">
+            <i data-lucide="key-round" class="icon-xs"></i>
+            <span>Change Password</span>
+          </button>
+          <button id="logout-btn" class="account-action-btn account-action-btn--danger" title="Sign out">
+            <i data-lucide="log-out" class="icon-xs"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -105,7 +275,7 @@
       <!-- Greeting and Date Header -->
       <header class="main-header">
         <div class="header-text">
-          <h2 id="greeting-title">Focus & Align</h2>
+          <h2 id="greeting-title">Focus &amp; Align</h2>
           <p id="current-date-str">Loading date...</p>
         </div>
         <div class="header-actions">
@@ -198,13 +368,13 @@
     <span id="toast-message">Task updated</span>
   </div>
 
-  <!-- Lucide Script init -->
+  <!-- Scripts -->
   <script>
-    // Initialize icons immediately if script loads
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
     });
   </script>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

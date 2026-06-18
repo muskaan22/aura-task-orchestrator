@@ -102,10 +102,27 @@ const DEFAULT_TODOS = [
 // INITIALIZATION
 // ----------------------------------------------------
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   setupEventListeners();
   loadStreak();
   fetchTodos();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize auth UI (login overlay, modals, logout button)
+  initAuthUI();
+  initChangePasswordModal();
+  initLogoutBtn();
+
+  // If already logged in, boot the app immediately
+  if (isLoggedIn()) {
+    initApp();
+  }
+
+  // Listen for successful login event from auth.js
+  window.addEventListener('auth:login', () => {
+    initApp();
+  });
 });
 
 // ----------------------------------------------------
